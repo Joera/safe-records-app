@@ -1,0 +1,11 @@
+{
+  "name": "Safe records",
+  "description": "A description of what your app do",
+  "icons": [
+    {
+      "src": "/myAppIcon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    }
+  ]
+}
