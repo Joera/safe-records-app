@@ -351,8 +351,8 @@ export class S2SRecordItem extends HTMLElement {
             detail: { key },
             bubbles: true
           }));
-        }
-      // });
+        
+      });
     }
   }
 }

@@ -11,7 +11,8 @@ export interface SafeInfo {
   modules: string[];
   owners: string[];
   threshold: number;
-  s2sRecords?: string; // Make it optional since it's added later
+  s2sRecords?: string;
+  s2sPublication?: string; 
 }
 
 export interface SafeAppsSDK {
