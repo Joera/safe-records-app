@@ -1,6 +1,6 @@
 {
-  "name": "Safe records",
-  "description": "A description of what your app do",
+  "name": "Soul2Soul Publication Manager",
+  "description": "Whitelist authors and devs. Update configuration, templates and styling",
   "icons": [
     {
       "src": "/myAppIcon.svg",

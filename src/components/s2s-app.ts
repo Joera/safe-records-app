@@ -21,13 +21,15 @@ export class S2SApp extends HTMLElement {
   private currentTab: 'deals' | 'whitelist' | 'records' = 'deals';
 
   constructor() {
+    console.log("constructore")
     super();
     this.attachShadow({ mode: 'open' });
     this.safeIntegration = new SafeIntegration();
+    console.log("after safe integration")
   }
 
   async connectedCallback() {
-    console.log('S2S App initializing...');
+    console.log('connected callback');
     try {
       this.safeInfo = await this.safeIntegration.initialize();
       console.log('Safe Info:', this.safeInfo);
@@ -45,14 +47,15 @@ export class S2SApp extends HTMLElement {
   }
 
   private render() {
+    console.log("render")
     if (!this.shadowRoot) return;
 
     this.shadowRoot.innerHTML = `
       <style>
         :host {
           display: block;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          background-color: #f9fafb;
+          font-family: "Ringside Regular Office A", "Ringside Regular Office B", sans-serif;
+          background-color: #fff;
           min-height: 100vh;
         }
         
@@ -64,16 +67,16 @@ export class S2SApp extends HTMLElement {
         
         .header {
           background: white;
-          border-radius: 0.75rem;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-          padding: 2rem;
+          padding: 2rem 0;
           margin-bottom: 2rem;
         }
         
         .title {
-          font-size: 2rem;
-          font-weight: 700;
-          color: #111827;
+          font-size: 3.2rem;
+          font-family: "Knockout 50 A", "Knockout 50 B";
+          font-style: normal;
+          font-weight: 400;
+          color: #000;
           margin: 0 0 0.5rem 0;
           display: flex;
           align-items: center;
@@ -81,12 +84,20 @@ export class S2SApp extends HTMLElement {
         }
         
         .subtitle {
-          color: #6b7280;
+          color: #000;
           margin: 0 0 1rem 0;
           font-size: 1.125rem;
         }
+
+        .module-status {
+          display: flex;
+          gap: 1rem;
+          margin-top: 1rem;
+          font-size: 0.875rem;
+        }
         
-        .safe-status {
+        
+        .safe-status, .module-badge  {
           display: inline-flex;
           align-items: center;
           gap: 0.5rem;
@@ -96,19 +107,6 @@ export class S2SApp extends HTMLElement {
           border-radius: 9999px;
           background: #dcfce7;
           color: #166534;
-        }
-        
-        .module-status {
-          display: flex;
-          gap: 1rem;
-          margin-top: 1rem;
-          font-size: 0.875rem;
-        }
-        
-        .module-badge {
-          padding: 0.5rem 1rem;
-          border-radius: 0.5rem;
-          font-weight: 500;
         }
         
         .module-active {
@@ -126,21 +124,19 @@ export class S2SApp extends HTMLElement {
           gap: 0.5rem;
           background: white;
           padding: 0.5rem;
-          border-radius: 0.75rem;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
           margin-bottom: 2rem;
         }
         
         .tab {
-          flex: 1;
+          
           padding: 0.75rem 1.5rem;
           border: none;
+          border-bottom: 1px solid black;
           background: transparent;
-          color: #6b7280;
+          color: #000;
           font-size: 1rem;
           font-weight: 500;
           cursor: pointer;
-          border-radius: 0.5rem;
           transition: all 0.2s;
           display: flex;
           align-items: center;
@@ -154,8 +150,9 @@ export class S2SApp extends HTMLElement {
         }
         
         .tab.active {
-          background: #3b82f6;
-          color: white;
+        //   background: #3b82f6;
+          font-weight: 700;
+          border-bottom: 3px solid black;
         }
         
         .tab:disabled {
@@ -187,9 +184,7 @@ export class S2SApp extends HTMLElement {
         }
         
         .tab-content {
-          background: white;
-          border-radius: 0.75rem;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          background: white; 
           overflow: hidden;
         }
 
@@ -212,20 +207,24 @@ export class S2SApp extends HTMLElement {
           <!-- Header -->
           <div class="header">
             <h1 class="title">
-              🌐 Soul2Soul Publication Manager
+              Soul2Soul Publication Manager
             </h1>
             <p class="subtitle">Manage your publication through Safe modules</p>
-            <div class="safe-status">
-              ${this.safeIntegration.isConnected() ? '🟢 Connected to Safe' : '🔴 Not Connected'}
-            </div>
-            
+
+
             <div class="module-status">
-              <div class="module-badge ${this.safeIntegration.hasPublicationModule() ? 'module-active' : 'module-inactive'}">
+
+                <div class="safe-status">
+                ${this.safeIntegration.isConnected() ? 'Connected to Safe' : 'Not Connected'}
+                </div>
+                
+    
+                <div class="module-badge ${this.safeIntegration.hasPublicationModule() ? 'module-active' : 'module-inactive'}">
                 ${this.safeIntegration.hasPublicationModule() ? '✅' : '❌'} Publication Module
-              </div>
-              <div class="module-badge ${this.safeIntegration.hasRecordsModule() ? 'module-active' : 'module-inactive'}">
+                </div>
+                <div class="module-badge ${this.safeIntegration.hasRecordsModule() ? 'module-active' : 'module-inactive'}">
                 ${this.safeIntegration.hasRecordsModule() ? '✅' : '❌'} Records Module
-              </div>
+                </div>
             </div>
           </div>
 
@@ -242,21 +241,21 @@ export class S2SApp extends HTMLElement {
               id="deals-tab"
               ${!this.safeIntegration.hasPublicationModule() ? 'disabled' : ''}
             >
-              📄 Deals
+              Deals
             </button>
             <button 
               class="tab ${this.currentTab === 'whitelist' ? 'active' : ''}" 
               id="whitelist-tab"
               ${!this.safeIntegration.hasPublicationModule() ? 'disabled' : ''}
             >
-              👥 Whitelists
+              Whitelists
             </button>
             <button 
               class="tab ${this.currentTab === 'records' ? 'active' : ''}" 
               id="records-tab"
               ${!this.safeIntegration.hasRecordsModule() ? 'disabled' : ''}
             >
-              ⚙️ Records
+              Records
             </button>
           </div>
           

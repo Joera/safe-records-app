@@ -5,7 +5,7 @@ export class S2SDealsTab extends HTMLElement {
   public safeIntegration!: SafeIntegration;
   private loading = true;
   private deals: Array<{streamId: string, author: string, status: 'active' | 'pending'}> = [];
-  private pendingDeals: Array<{streamId: string, author: string, publication: string}> = [];
+  private pendingDeals:  Array<{streamId: string, author: string, status: 'active' | 'pending'}> = [];
 
   constructor() {
     super();
@@ -23,12 +23,16 @@ export class S2SDealsTab extends HTMLElement {
     this.render();
 
     try {
-      // TODO: We need to add methods to fetch all deals
-      // For now, this is a placeholder structure
-      // You'll need to add event listening or storage to track deals
+      const safeIntegration = new SafeIntegration();
+      await safeIntegration.initialize();
+
+      const { activeDeals, pendingDeals } = await safeIntegration.getAllDeals();
       
-      this.deals = [];
-      this.pendingDeals = [];
+      this.deals = activeDeals;
+      this.pendingDeals = pendingDeals;
+
+      console.log('Active deals:', this.deals);
+      console.log('Pending deals:', this.pendingDeals);
       
     } catch (error) {
       console.error('Error loading deals:', error);
@@ -36,6 +40,11 @@ export class S2SDealsTab extends HTMLElement {
 
     this.loading = false;
     this.render();
+  }
+
+  // Add refresh handler
+  private async handleRefresh() {
+    await this.loadDeals();
   }
 
   private async checkDeal(streamId: string) {
@@ -52,25 +61,6 @@ export class S2SDealsTab extends HTMLElement {
     } catch (error) {
       console.error('Error checking deal:', error);
       this.showNotification('Failed to check deal', 'error');
-    }
-  }
-
-  private async offerDeal(publication: string, streamId: string) {
-    if (!publication.trim() || !streamId.trim()) {
-      this.showNotification('Publication and Stream ID cannot be empty', 'error');
-      return;
-    }
-
-    try {
-      await this.safeIntegration.offerDeal(publication, streamId);
-      this.showNotification('Deal offered successfully! Transaction pending approval.', 'success');
-      
-      // Optimistically add to pending deals
-      this.pendingDeals.push({ streamId, author: 'You', publication });
-      this.render();
-    } catch (error) {
-      console.error('Error offering deal:', error);
-      this.showNotification('Failed to offer deal. Please try again.', 'error');
     }
   }
 
@@ -153,36 +143,66 @@ export class S2SDealsTab extends HTMLElement {
       <style>
         :host {
           display: block;
-          padding: 2rem;
+          padding: 2rem 0;
         }
 
         .section {
           margin-bottom: 3rem;
         }
 
+        .section-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1rem;
+        }
+
         .section-title {
           font-size: 1.5rem;
           font-weight: 600;
-          color: #111827;
-          margin: 0 0 1rem 0;
+          color: #000;
+          margin: 0;
           display: flex;
           align-items: center;
           gap: 0.75rem;
         }
 
         .section-description {
-          color: #6b7280;
+          color: #000;
           margin-bottom: 1.5rem;
+        }
+
+        .refresh-button {
+          background: #000;
+          color: white;
+          border: none;
+          padding: 0.5rem 1rem;
+          border-radius: 0.5rem;
+          cursor: pointer;
+          font-size: 1rem;
+          font-weight: 500;
+          transition: background-color 0.2s, transform 0.1s;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .refresh-button:hover:not(:disabled) {
+          background: #4a9a85;
+          transform: translateY(-1px);
+        }
+
+        .refresh-button:disabled {
+          background: #9ca3af;
+          cursor: not-allowed;
+          transform: none;
         }
 
         .check-deal-form,
         .offer-deal-form {
           display: grid;
           gap: 1rem;
-          background: #f9fafb;
-          padding: 1.5rem;
-          border-radius: 0.5rem;
-          border: 1px solid #e5e7eb;
+          padding: 1.5rem 0;
         }
 
         .offer-deal-form {
@@ -198,6 +218,12 @@ export class S2SDealsTab extends HTMLElement {
           .check-deal-form {
             grid-template-columns: 1fr;
           }
+          
+          .section-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+          }
         }
 
         .input {
@@ -205,17 +231,15 @@ export class S2SDealsTab extends HTMLElement {
           border: 1px solid #d1d5db;
           border-radius: 0.5rem;
           font-size: 1rem;
-          transition: border-color 0.2s, box-shadow 0.2s;
         }
 
         .input:focus {
           outline: none;
           border-color: #3b82f6;
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
 
         .button {
-          background: #3b82f6;
+          background: #5bba9d;
           color: white;
           border: none;
           padding: 0.75rem 1.5rem;
@@ -258,10 +282,10 @@ export class S2SDealsTab extends HTMLElement {
         }
 
         .deal-card {
-          background: #f9fafb;
-          border: 1px solid #e5e7eb;
-          border-radius: 0.5rem;
-          padding: 1.5rem;
+
+          border-bottom: 1px solid #000;
+          padding: 1.5rem 0 ;
+          margin-bottom: .75rem;
           display: flex;
           justify-content: space-between;
           align-items: center;
@@ -272,16 +296,15 @@ export class S2SDealsTab extends HTMLElement {
         }
 
         .deal-stream-id {
-          font-family: 'Monaco', 'Menlo', monospace;
-          font-size: 0.875rem;
-          color: #111827;
+          font-size: 1rem;
+          color: #000;
           font-weight: 600;
           margin-bottom: 0.5rem;
         }
 
         .deal-author {
-          font-size: 0.875rem;
-          color: #6b7280;
+          font-size: 1rem;
+          color: #000;
         }
 
         .deal-status {
@@ -324,6 +347,16 @@ export class S2SDealsTab extends HTMLElement {
           padding: 3rem;
           color: #6b7280;
         }
+
+        .list_header {
+        
+          display: flex;
+          flex-direction: row;
+          justify-content: space-between;
+          align-items: center;
+          border-bottom: 3px solid #000;
+          padding-bottom: .75rem;
+        }
       </style>
 
       ${this.loading ? `
@@ -333,14 +366,17 @@ export class S2SDealsTab extends HTMLElement {
       ` : `
         <!-- Check Deal -->
         <div class="section">
-          <h2 class="section-title">🔍 Check Deal Status</h2>
+          <div class="section-header">
+            <h2 class="section-title">Check Deal Status</h2>
+      
+          </div>
           <p class="section-description">Check if a deal exists for a specific stream ID</p>
           
           <div class="check-deal-form">
             <input 
               type="text" 
               class="input" 
-              placeholder="Stream ID (e.g., ceramic://...)"
+              placeholder="Stream ID"
               id="check-stream-id"
             />
             <button class="button" id="check-deal-btn">
@@ -349,42 +385,20 @@ export class S2SDealsTab extends HTMLElement {
           </div>
         </div>
 
-        <!-- Offer Deal -->
-        <div class="section">
-          <h2 class="section-title">➕ Offer New Deal</h2>
-          <p class="section-description">Propose a new deal with an author</p>
-          
-          <div class="offer-deal-form">
-            <input 
-              type="text" 
-              class="input" 
-              placeholder="Publication Address (0x...)"
-              id="offer-publication"
-            />
-            <input 
-              type="text" 
-              class="input" 
-              placeholder="Stream ID (e.g., ceramic://...)"
-              id="offer-stream-id"
-            />
-            <button class="button" id="offer-deal-btn">
-              Offer Deal
-            </button>
-          </div>
-        </div>
-
         <!-- Pending Deals -->
         ${this.pendingDeals.length > 0 ? `
           <div class="section">
-            <h2 class="section-title">⏳ Pending Deals</h2>
+            <h2 class="section-title">Pending Deals (${this.pendingDeals.length})</h2>
+            <button class="refresh-button" id="refresh-btn" ${this.loading ? 'disabled' : ''}>
+              <span>${this.loading ? 'Loading...' : 'Refresh'}</span>
+            </button>
             <div class="deals-list">
               ${this.pendingDeals.map(deal => `
                 <div class="deal-card">
                   <div class="deal-info">
                     <div class="deal-stream-id">${deal.streamId}</div>
                     <div class="deal-author">Author: ${deal.author}</div>
-                    <div class="deal-author">Publication: ${deal.publication}</div>
-                    <span class="deal-status status-pending">⏳ Pending</span>
+                    <span class="deal-status status-pending">Pending</span>
                   </div>
                   <div class="deal-actions">
                     <button 
@@ -403,7 +417,12 @@ export class S2SDealsTab extends HTMLElement {
 
         <!-- Active Deals -->
         <div class="section">
-          <h2 class="section-title">✅ Active Deals</h2>
+                <div class="list_header">
+                <h2 class="section-title">Active Deals (${this.deals.length})</h2>
+                  <button class="refresh-button" id="refresh-btn" ${this.loading ? 'disabled' : ''}>
+                    <span>${this.loading ? 'Loading...' : 'Refresh'}</span>
+                  </button>
+                </div>
           ${this.deals.length > 0 ? `
             <div class="deals-list">
               ${this.deals.map(deal => `
@@ -411,7 +430,6 @@ export class S2SDealsTab extends HTMLElement {
                   <div class="deal-info">
                     <div class="deal-stream-id">${deal.streamId}</div>
                     <div class="deal-author">Author: ${deal.author}</div>
-                    <span class="deal-status status-active">✓ Active</span>
                   </div>
                   <div class="deal-actions">
                     <button 
@@ -419,7 +437,7 @@ export class S2SDealsTab extends HTMLElement {
                       data-action="revoke"
                       data-stream-id="${deal.streamId}"
                     >
-                      ✗ Revoke
+                      Revoke
                     </button>
                   </div>
                 </div>
@@ -441,6 +459,12 @@ export class S2SDealsTab extends HTMLElement {
   }
 
   private attachEventListeners() {
+    // Refresh button
+    const refreshBtn = this.shadowRoot?.querySelector('#refresh-btn');
+    refreshBtn?.addEventListener('click', () => {
+      this.handleRefresh();
+    });
+
     // Check deal
     const checkBtn = this.shadowRoot?.querySelector('#check-deal-btn');
     const checkInput = this.shadowRoot?.querySelector('#check-stream-id') as HTMLInputElement;
@@ -449,22 +473,6 @@ export class S2SDealsTab extends HTMLElement {
       const streamId = checkInput?.value.trim();
       if (streamId) {
         this.checkDeal(streamId);
-      }
-    });
-
-    // Offer deal
-    const offerBtn = this.shadowRoot?.querySelector('#offer-deal-btn');
-    const offerPubInput = this.shadowRoot?.querySelector('#offer-publication') as HTMLInputElement;
-    const offerStreamInput = this.shadowRoot?.querySelector('#offer-stream-id') as HTMLInputElement;
-    
-    offerBtn?.addEventListener('click', () => {
-      const publication = offerPubInput?.value.trim();
-      const streamId = offerStreamInput?.value.trim();
-      if (publication && streamId) {
-        this.offerDeal(publication, streamId).then(() => {
-          offerPubInput.value = '';
-          offerStreamInput.value = '';
-        });
       }
     });
 

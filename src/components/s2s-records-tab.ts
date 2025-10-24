@@ -169,7 +169,7 @@ export class S2SRecordsTab extends HTMLElement {
       <style>
         :host {
           display: block;
-          padding: 2rem;
+          padding: 2rem 0;
         }
 
         .section {
@@ -179,7 +179,7 @@ export class S2SRecordsTab extends HTMLElement {
         .section-title {
           font-size: 1.5rem;
           font-weight: 600;
-          color: #111827;
+          color: #000;
           margin: 0 0 1rem 0;
           display: flex;
           align-items: center;
@@ -187,7 +187,7 @@ export class S2SRecordsTab extends HTMLElement {
         }
 
         .section-description {
-          color: #6b7280;
+          color: #000;
           margin-bottom: 1.5rem;
         }
 
@@ -204,7 +204,7 @@ export class S2SRecordsTab extends HTMLElement {
 
         .search-input:focus {
           outline: none;
-          border-color: #3b82f6;
+          border-color: #5bba9d;
           box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
 
@@ -235,12 +235,12 @@ export class S2SRecordsTab extends HTMLElement {
 
         .input:focus {
           outline: none;
-          border-color: #3b82f6;
+          border-color: #5bba9d;
           box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
 
         .button {
-          background: #3b82f6;
+          background: #5bba9d;
           color: white;
           border: none;
           padding: 0.75rem 1.5rem;
@@ -253,7 +253,7 @@ export class S2SRecordsTab extends HTMLElement {
         }
 
         .button:hover {
-          background: #2563eb;
+          background: #5bba9d;
           transform: translateY(-1px);
         }
 

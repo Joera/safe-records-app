@@ -1,6 +1,7 @@
 // src/lib/safe-integration.ts
-import { S2S_RECORDS_ABI, S2S_PUBLICATION_ABI } from '@/constants';
-import type { SafeInfo, SafeAppsSDK, EthersContract } from '@/types';
+import { S2S_PUBLICATION_ABI, S2S_RECORDS_ABI } from '@/constants';
+import type { SafeInfo, EthersContract } from '@/types';
+import SafeAppsSDK from '@safe-global/safe-apps-sdk';
 
 export class SafeIntegration {
   private safeSdk: SafeAppsSDK | null = null;
@@ -19,7 +20,7 @@ export class SafeIntegration {
 
   async initialize(): Promise<SafeInfo> {
     try {
-      if (typeof window.SafeAppsSDK === 'undefined') {
+      if (typeof SafeAppsSDK === 'undefined') {
         throw new Error('SafeAppsSDK not available');
       }
 
@@ -28,7 +29,7 @@ export class SafeIntegration {
         debug: false
       };
 
-      this.safeSdk = new window.SafeAppsSDK(opts);
+      this.safeSdk = new SafeAppsSDK(opts);
       const safeData: any = await this.safeSdk!.safe.getInfo();
       
       this.safeInfo = {
@@ -46,38 +47,46 @@ export class SafeIntegration {
       const provider = new window.ethers.providers.JsonRpcProvider(rpcUrl);
 
       // Find both modules
+      const NAME_ABI = [
+        "function NAME() view returns (string)"
+      ];
+
       for (const moduleAddress of this.safeInfo.modules) {
         try {
-          // Try Records Module
-          const recordsModule = new window.ethers.Contract(
+          // Check for NAME function with minimal ABI
+          const moduleChecker = new window.ethers.Contract(
             moduleAddress,
-            S2S_RECORDS_ABI,
+            NAME_ABI,
             provider
           );
-          const recordsName = await recordsModule.NAME();
-          if (recordsName === "S2S Records Module") {
+          
+          const name = await moduleChecker.NAME();
+          console.log(`Module ${moduleAddress} has NAME:`, name);
+          
+          if (name === "S2S Records Module") {
+            // Create full contract instance with complete ABI
+            this.recordsModule = new window.ethers.Contract(
+              moduleAddress,
+              S2S_RECORDS_ABI,
+              provider
+            );
             this.safeInfo.s2sRecords = moduleAddress;
-            this.recordsModule = recordsModule;
             console.log("Found Records Module:", moduleAddress);
-          }
-        } catch (error) {
-          // Not a records module, try publication
-          try {
-            const publicationModule = new window.ethers.Contract(
+            
+          } else if (name === "S2S Publication Module") {
+            // Create full contract instance with complete ABI
+            this.publicationModule = new window.ethers.Contract(
               moduleAddress,
               S2S_PUBLICATION_ABI,
               provider
             );
-            // Check if it has the safe() function (characteristic of publication module)
-            const moduleSafe = await publicationModule.safe();
-            if (moduleSafe === this.safeInfo.safeAddress) {
-              this.safeInfo.s2sPublication = moduleAddress;
-              this.publicationModule = publicationModule;
-              console.log("Found Publication Module:", moduleAddress);
-            }
-          } catch (innerError) {
-            // Not a publication module either
+            this.safeInfo.s2sPublication = moduleAddress;
+            console.log("Found Publication Module:", moduleAddress);
           }
+          
+        } catch (error) {
+          // Module doesn't have NAME() function, skip it
+          console.log(`Module ${moduleAddress} doesn't have NAME(), skipping`);
         }
       }
 
@@ -191,6 +200,64 @@ export class SafeIntegration {
       throw new Error('Publication module not initialized');
     }
     return await this.publicationModule.getDealAuthor(streamId);
+  }
+  
+  async getAllDeals(): Promise<{
+      activeDeals: Array<{ streamId: string; author: string; status: "active" | "pending" }>;
+      pendingDeals: Array<{ streamId: string; author: string; status: "active" | "pending" }>;
+    }> {
+      if (!this.publicationModule) {
+        throw new Error('Publication module not initialized');
+      }
+
+      try {
+        const streamIds = await this.publicationModule.getAllStreamIds();
+        
+        const [dealStatuses, pendingStatuses] = await Promise.all([
+          this.publicationModule.hasDealBulk(streamIds),
+          Promise.all(streamIds.map((id: string) => this.publicationModule.hasPendingDeal(id)))
+        ]);
+        
+        // Get active deals with authors
+        const activeStreamIds = streamIds.filter((_: string, i: number) => dealStatuses[i]);
+        const activeAuthors = await Promise.all(
+          activeStreamIds.map((id: string) => this.publicationModule.getDealAuthor(id))
+        );
+        
+        const activeDeals = activeStreamIds.map((streamId: string, i: number) => ({ 
+          streamId, 
+          author: activeAuthors[i] || 'Unknown',
+          status: 'active' as const 
+        }));
+        
+        // Get pending deals with authors
+        const pendingStreamIds = streamIds.filter((_: string, i: number) => pendingStatuses[i]);
+        const pendingDealInfos = await Promise.all(
+          pendingStreamIds.map((id: string) => this.publicationModule.getPendingDeal(id))
+        );
+        
+        const pendingDeals = pendingStreamIds.map((streamId: string, i: number) => ({ 
+          streamId,
+          author: pendingDealInfos[i].author || 'Unknown',
+          status: 'pending' as const 
+        }));
+          
+        return { activeDeals, pendingDeals };
+        
+      } catch (error) {
+
+          return { activeDeals: [], pendingDeals: [] } 
+      }
+    }
+
+  async getPendingDeals(): Promise<Array<{ streamId: string; author: string; status: "active" | "pending" }>> {
+    const { pendingDeals } = await this.getAllDeals();
+    return pendingDeals;
+  }
+
+  async getActiveDeals(): Promise<Array<{ streamId: string; author: string; status: "active" | "pending" }>> {
+    const { activeDeals } = await this.getAllDeals();
+    return activeDeals;
   }
 
   // ===== PUBLICATION MODULE - WHITELISTS =====
