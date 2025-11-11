@@ -1,6 +1,8 @@
 // s2s-records-tab.ts
+import { ConfigBuilder } from '@/lib/config-builder.js';
 import { SafeIntegration } from '../lib/safe-integration.js';
 import { S2SRecord } from '../types/index.js';
+import { ProtocolInfoService } from '@/lib/protocol-info.js';
 
 export class S2SRecordsTab extends HTMLElement {
   public safeIntegration!: SafeIntegration;
@@ -133,6 +135,54 @@ export class S2SRecordsTab extends HTMLElement {
   private cancelEdit() {
     this.editingKey = null;
     this.render();
+  }
+
+  private async updateConfig() {
+
+
+    const service = new ProtocolInfoService(this.safeIntegration, "https://ipfs.transport-union.dev");
+    const protocolInfo = await service.getProtocolInfo();
+
+    console.log(protocolInfo);
+
+    const existingCid = await this.safeIntegration.getRecord('config');
+    const repo = await this.safeIntegration.getRecord('repo');
+    // const commit = await this.safeIntegration.getRecord('commit');
+
+    const builder = new ConfigBuilder(
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiI0MzNhYjNkMS02YTZjLTQzMGUtODhkZC03Yzc0Y2MyZmQzMDkiLCJlbWFpbCI6ImpvZXJhQGpvZXJhbXVsZGVycy5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGluX3BvbGljeSI6eyJyZWdpb25zIjpbeyJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MSwiaWQiOiJOWUMxIn1dLCJ2ZXJzaW9uIjoxfSwibWZhX2VuYWJsZWQiOmZhbHNlLCJzdGF0dXMiOiJBQ1RJVkUifSwiYXV0aGVudGljYXRpb25UeXBlIjoic2NvcGVkS2V5Iiwic2NvcGVkS2V5S2V5IjoiNDdlMTk2ZDI2ODNjMzNhMWJmNDUiLCJzY29wZWRLZXlTZWNyZXQiOiI4MjE0NDY0YTAyOTlmMmE1OGU4MzcwNWI4NWYxNTNjMTQ1Mzc2YWY3ODc1N2ZjOWI5NTM3YjBjNWFiZGQyNWY0IiwiZXhwIjoxNzc1MDU1NTAyfQ.PnFMDGxYGbzfqFjcENNgSEi393Pi5qE0ebZPOBEJUVk',
+          'https://neutralpress.mypinata.cloud',
+          'https://ipfs.transport-union.dev'
+        );
+
+    const { cid } = await builder.buildConfig(
+      repo.split("/")[3],
+      repo.split("/")[4],
+      "main",
+      // commit,
+      "fluffy26",
+      this.safeIntegration.getSafeInfo().s2sPublication || "",
+      existingCid
+    );
+
+    // Update config record in Safe
+    // await this.safeIntegration.setRecord('config', cid);
+
+    const executionUrl = await this.safeIntegration.setRecord('config', cid);
+
+    window.open(executionUrl, '_blank')
+    
+    
+    // Show a modal or notification with the link
+    // alert({
+    //   title: 'Transaction Proposed',
+    //   message: 'Please execute the transaction in Safe',
+    //   action: {
+    //     label: 'Execute in Safe',
+    //     onClick: () => window.open(executionUrl, '_blank')
+    //   }
+    // });
+
   }
 
   private showNotification(message: string, type: 'success' | 'error') {
@@ -398,6 +448,9 @@ export class S2SRecordsTab extends HTMLElement {
 
         <!-- Add Record -->
         <div class="section">
+            <button class="button" data-action="update">Update</button>
+        </div>
+        <div class="section">
           <h2 class="section-title">➕ Add New Record</h2>
           <p class="section-description">Store configuration and metadata for your publication</p>
           
@@ -552,6 +605,8 @@ export class S2SRecordsTab extends HTMLElement {
           }
         } else if (action === 'cancel') {
           this.cancelEdit();
+        } else if (action === 'update') {
+          this.updateConfig();
         }
       });
     });

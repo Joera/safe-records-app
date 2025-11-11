@@ -106,7 +106,20 @@ export class SafeIntegration {
     throw new Error('Records module not initialized');
   }
 
-  async setRecord(key: string, value: string): Promise<void> {
+  async getRecord(key: string): Promise<string> {
+    if (!this.recordsModule) {
+      throw new Error('Records module not initialized');
+    }
+    
+    try {
+      return await this.recordsModule.getRecord(key);
+    } catch (error) {
+      console.error(`Error getting record for key "${key}":`, error);
+      throw error;
+    }
+  }
+
+  async setRecord(key: string, value: string): Promise<string> {
     if (!this.safeSdk || !this.recordsModule) {
       throw new Error('Safe SDK or records module not initialized');
     }
@@ -120,6 +133,13 @@ export class SafeIntegration {
         data: txData
       }]
     });
+
+    // Use stored safeInfo (you likely already have this)
+    const safeUrl = `https://app.safe.global/transactions/queue?safe=${this.safeInfo.chainId}:${this.safeInfo.safeAddress}`;
+    
+    console.log('Transaction proposed. Execute at:', safeUrl);
+    
+    return safeUrl;
   }
 
   async deleteRecord(key: string): Promise<void> {
@@ -388,5 +408,59 @@ export class SafeIntegration {
     }
 
     return rpc;
+  }
+
+  evmSetup(contractAddress: string, abi: any, chainId: number) {
+
+    let provider;
+
+    const url =  this.getRpcUrl(chainId)
+
+  switch(chainId) {
+
+    case 1:
+      provider = new window.ethers.providers.JsonRpcProvider({
+      url,
+      chainId,
+      name: "Ethereum",
+    });
+
+    break;
+
+    case 8453:
+      provider = new window.ethers.providers.JsonRpcProvider({
+      url,
+      chainId,
+      name: "Base",
+    });
+
+    break; 
+
+   case 84532:
+      provider = new window.ethers.providers.JsonRpcProvider({
+      url,
+      chainId,
+      name: "Base Sepolia",
+    });
+
+    break; 
+  }
+
+
+  const contract = new window.ethers.Contract(
+    contractAddress,
+    abi,
+    provider
+  );
+
+  return { provider, contract };
+
+  }
+
+
+  async evmRead(chainId: number, l2records: string, abi: any, method: string, args: any[]) { 
+
+    const { provider, contract } = this.evmSetup(l2records, abi, chainId);
+    return await contract[method](...args);
   }
 }
