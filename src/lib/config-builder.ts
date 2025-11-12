@@ -77,6 +77,24 @@ export class ConfigBuilder {
     return Array.isArray(data) ? data : [];
   }
 
+  async getAllFilesRecursive(owner: string, repo: string, branch: string, path: string = ""): Promise<GitHubFile[]> {
+    const files = await this.getGitHubFiles(owner, repo, branch, path);
+    let allFiles: GitHubFile[] = [];
+    
+    for (const file of files) {
+      if (file.type === 'file') {
+        allFiles.push(file);
+      } else if (file.type === 'dir') {
+        // Recursively fetch files from subdirectories
+        const subFiles = await this.getAllFilesRecursive(owner, repo, branch, file.path);
+        allFiles = allFiles.concat(subFiles);
+      }
+    }
+    
+    return allFiles;
+  }
+
+
   // Fetch file content from GitHub
   async fetchGitHubFile(downloadUrl: string): Promise<string> {
     const response = await fetch(downloadUrl);
