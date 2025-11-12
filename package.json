@@ -30,6 +30,7 @@
     "@safe-global/safe-apps-sdk": "^9.1.0",
     "dotenv": "^17.2.2",
     "ethers": "^5.7.2",
+    "multiformats": "^13.4.1",
     "path": "^0.12.7",
     "terser": "^5.44.0"
   }

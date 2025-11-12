@@ -86,6 +86,23 @@ export class ConfigBuilder {
     return await response.text();
   }
 
+  async getAllFilesRecursive(owner: string, repo: string, branch: string, path: string = ""): Promise<GitHubFile[]> {
+    const files = await this.getGitHubFiles(owner, repo, branch, path);
+    let allFiles: GitHubFile[] = [];
+    
+    for (const file of files) {
+      if (file.type === 'file') {
+        allFiles.push(file);
+      } else if (file.type === 'dir') {
+        // Recursively fetch files from subdirectories
+        const subFiles = await this.getAllFilesRecursive(owner, repo, branch, file.path);
+        allFiles = allFiles.concat(subFiles);
+      }
+    }
+    
+    return allFiles;
+  }
+
   // Get latest commit SHA
   async getLatestCommitSHA(owner: string, repo: string, branch: string): Promise<string> {
     const url = `https://api.github.com/repos/${owner}/${repo}/commits/${branch}`;
@@ -194,7 +211,7 @@ export class ConfigBuilder {
 
     // Process assets
     console.log("Processing assets...");
-    const assetFiles = await this.getGitHubFiles(github_account, repo, branch, 'assets');
+    const assetFiles = await this.getAllFilesRecursive(github_account, repo, branch, 'assets');
     const existingAssetCids = config.assets.map((a: any) => a.cid);
 
     for (const asset of assetFiles) {
@@ -216,7 +233,7 @@ export class ConfigBuilder {
 
     // Process stylesheets
     console.log("Processing stylesheets...");
-    const cssFiles = (await this.getGitHubFiles(github_account, repo, branch, 'css'))
+    const cssFiles = (await this.getAllFilesRecursive(github_account, repo, branch, 'css'))
       .filter(file => file.path.endsWith('.css'));
 
     for (const cssFile of cssFiles) {
@@ -233,7 +250,7 @@ export class ConfigBuilder {
 
     // Process templates
     console.log("Processing templates...");
-    const templateFiles = await this.getGitHubFiles(github_account, repo, branch, 'templates');
+    const templateFiles = await this.getAllFilesRecursive(github_account, repo, branch, 'templates');
 
     for (const template of templateFiles) {
       if (template.type !== 'file') continue;

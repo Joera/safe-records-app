@@ -1,5 +1,5 @@
 // src/lib/safe-integration.ts
-import { S2S_PUBLICATION_ABI, S2S_RECORDS_ABI } from '@/constants';
+import { S2S_PUBLICATION_ABI, S2S_RECORDS_ABI } from '@/lib/constants';
 import type { SafeInfo, EthersContract } from '@/types';
 import SafeAppsSDK from '@safe-global/safe-apps-sdk';
 
